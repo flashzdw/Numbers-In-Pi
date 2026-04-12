@@ -5,12 +5,8 @@ const path = require('path');
 
 const app = express();
 
-// 允许所有跨域请求，方便与前端联调
+// 允许所有跨域请求，让部署在 Cloudflare Pages 的前端可以访问
 app.use(cors());
-
-// 静态文件托管：让 Express 直接接管前端编译后的网页
-const FRONTEND_DIST = path.join(__dirname, '../frontend/dist');
-app.use(express.static(FRONTEND_DIST));
 
 const PORT = process.env.PORT || 3000;
 
@@ -99,17 +95,16 @@ app.get('/api/search', async (req, res) => {
   }
 });
 
-// 任何其他未匹配的路由都返回前端的 index.html，以支持前端路由（如果后续加入了 react-router）
-app.get('*', (req, res) => {
-  res.sendFile(path.join(FRONTEND_DIST, 'index.html'));
+// 任何其他未匹配的路由都返回 404，因为前端现在托管在 Cloudflare Pages
+app.use((req, res) => {
+  res.status(404).send('API endpoint not found.');
 });
 
 app.listen(PORT, () => {
   console.log(`\n===================================================`);
-  console.log(`🚀 本地版 Pi Poster 聚合服务已启动!`);
-  console.log(`📡 本地访问地址: http://localhost:${PORT}`);
+  console.log(`🚀 本地版 Pi Poster API 服务已启动!`);
+  console.log(`📡 本地监听地址: http://localhost:${PORT}`);
   console.log(`📂 索引文件路径: ${INDEX_FILE}`);
   console.log(`📄 文本文件路径: ${PI_FILE}`);
-  console.log(`🌐 静态网页路径: ${FRONTEND_DIST}`);
   console.log(`===================================================\n`);
 });
