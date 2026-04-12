@@ -8,7 +8,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8787',
+        target: 'http://localhost:3000', // 改为本地 Node.js 服务的端口
         changeOrigin: true,
       }
     }
