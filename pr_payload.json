@@ -1,0 +1,6 @@
+{
+  "title": "feat: 添加本地后端服务与开发环境支持",
+  "body": "此次合并主要引入了一个基于 Node.js 和 Express 的本地后端服务，使项目能够在不依赖 Cloudflare Worker 的情况下进行本地搜索和测试。前端的代理配置也同步更新为默认连接该本地服务，同时支持通过环境变量灵活切换回 Worker 服务。这些更改配合新增的详细文档，极大地方便了开发者在本地环境（尤其是 Mac 端）的快速部署与独立调试。\n\n| 文件 | 变更 |\n|------|---------|\n| README.md | - 添加了详细的本地环境部署指南。<br>- 提供了环境准备、索引生成、后端启动和前端配置的具体步骤说明。 |\n| frontend/vite.config.ts | - 修改了本地开发服务器的 API 代理目标端口配置。<br>- 增加了根据环境变量 `VITE_USE_WORKER` 动态切换本地后端或 Worker 服务代理地址的逻辑。 |\n| local-server/package-lock.json | - 自动生成了本地后端项目的依赖版本锁定文件。 |\n| local-server/package.json | - 初始化了本地后端服务的配置信息，添加了 express 和 cors 等必要依赖。 |\n| local-server/server.js | - 创建了基于 Express 框架的本地后端 API 服务。<br>- 实现了通过读取二进制索引文件高效检索圆周率数据段落的核心逻辑。 |",
+  "head": "trae/solo-agent-nnOEF0",
+  "base": "main"
+}
