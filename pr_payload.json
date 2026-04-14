@@ -1,6 +1,6 @@
 {
-  "title": "feat: 更新架构为 Cloudflare Serverless 与本地 Node.js 双环境支持并完善部署指南",
-  "body": "此次合并使项目同时支持纯 Cloudflare Serverless 环境与本地 Node.js 后端服务环境：\n\n1. **Cloudflare 架构支持**：提供面向 Cloudflare 生态的完整部署步骤，包括通过 Wrangler 准备数据、配置 R2 数据库、部署 Worker 后端和 Pages 前端。\n2. **本地后端服务支持**：引入基于 Node.js 和 Express 的本地后端服务，方便本地搜索和测试。\n3. **灵活的前端代理配置**：`vite.config.ts` 默认连接本地服务，同时支持通过环境变量 `VITE_USE_WORKER=true` 灵活切换回 Worker 服务的 `8787` 端口。\n4. **完善的 README 部署指南**：整合了 Cloudflare 线上部署与本地 Mac 环境的详细部署指南。",
+  "title": "refactor: 纯 Cloudflare 架构迁移",
+  "body": "此次 PR 移除了本地 Node.js 后端服务，项目全面采用纯 Cloudflare Serverless 架构：\n\n1. **移除本地后端**：删除了 `local-server` 目录及相关的 Express 服务。\n2. **前端代理配置更新**：将 `vite.config.ts` 中的本地开发代理直接固定指向 Cloudflare Worker 模拟器的默认端口 `8787`。\n3. **部署指南更新**：在 `README.md` 中移除了双环境部署指南，仅保留了 Cloudflare 生态下 R2 + Worker + Pages 的部署说明。",
   "head": "trae/solo-agent-nnOEF0",
   "base": "main"
 }

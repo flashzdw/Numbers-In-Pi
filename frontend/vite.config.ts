@@ -8,8 +8,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        // 默认使用本地 Node.js 服务的端口 (3000)，如需使用 worker 服务可配置环境变量 VITE_USE_WORKER=true
-        target: process.env.VITE_USE_WORKER === 'true' ? 'http://localhost:8787' : 'http://localhost:3000',
+        // 代理到本地运行的 Cloudflare Worker 模拟器端口
+        target: 'http://localhost:8787',
         changeOrigin: true,
       }
     }
