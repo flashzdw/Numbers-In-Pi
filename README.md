@@ -61,34 +61,33 @@ Cloudflare Worker 将直接读取 R2 存储桶中的数据。
    wrangler r2 object put pi-data/pi_index.bin --file pi_index.bin
    ```
 
-### 4. 部署 Worker 后端
+### 4. 部署 Worker 后端 (通过 GitHub 自动部署)
 
-1. 进入 `worker` 目录并安装依赖：
-   ```bash
-   cd worker
-   npm install
-   ```
-2. *(可选本地测试)* 如果你想先在本地运行和调试 Worker，可以执行 `npm run dev`（Vite 前端默认会代理到 Worker 的 `8787` 端口）。
-3. 部署 Worker 到 Cloudflare：
-   ```bash
-   npm run deploy
-   ```
-   *部署成功后，终端会输出你的 Worker 公网 URL，例如：`https://pi-poster-api.<your-subdomain>.workers.dev`。请记录下这个 URL，下一步会用到。*
+我们推荐在 Cloudflare 网站上直接关联 GitHub 仓库，这样每次向仓库推送代码都会自动部署升级到最新版本。
 
-### 5. 部署 Pages 前端
+1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)，在左侧菜单点击 **Workers & Pages**。
+2. 点击 **Create application** (创建应用程序)，选择 **Workers** 选项卡。
+3. 点击 **Connect to Git** (连接到 Git)，授权并选择你的 `numbers-in-pi` GitHub 仓库。
+4. 在构建设置中配置以下内容：
+   - **Root directory (根目录)**: `worker`
+5. 点击 **Save and deploy** (保存并部署)。
+6. 部署成功后，你会在控制台看到该 Worker 分配的公网 URL，例如：`https://pi-poster-api.<your-subdomain>.workers.dev`。**请记录下这个 URL**，下一步部署前端时必须用到。
 
-1. 进入 `frontend` 目录并安装依赖：
-   ```bash
-   cd ../frontend
-   npm install
-   ```
-2. 注入刚刚部署好的 Worker URL，并进行生产环境打包：
-   ```bash
-   # 请将下面 URL 替换为你实际的 Worker 地址
-   VITE_API_URL=https://pi-poster-api.<your-subdomain>.workers.dev npm run build
-   ```
-3. 将打包好的静态文件一键部署到 Cloudflare Pages：
-   ```bash
-   wrangler pages deploy dist
-   ```
-   *部署成功后，终端会输出你的 Pages 网页链接。打开浏览器，即可体验属于你的 Pi Poster！*
+### 5. 部署 Pages 前端 (通过 GitHub 自动部署)
+
+同样地，前端也可以通过关联 GitHub 实现自动化 CI/CD 部署。
+
+1. 返回 **Workers & Pages** 主页，点击 **Create application**，这次选择 **Pages** 选项卡。
+2. 点击 **Connect to Git**，选中你的 `numbers-in-pi` GitHub 仓库，点击 **Begin setup**。
+3. 在构建设置 (Set up builds and deployments) 中，严格按如下内容填写：
+   - **Framework preset**: `Vite` (或留空)
+   - **Root directory (根目录)**: `frontend` *(⚠️极其重要：因为前端代码在子目录中)*
+   - **Build command**: `npm run build`
+   - **Build output directory**: `dist`
+4. 展开下方的 **Environment variables (advanced)** (环境变量)，添加一条后端 API 的指向记录：
+   - **Variable name**: `VITE_API_URL`
+   - **Value**: `https://pi-poster-api.<your-subdomain>.workers.dev` *(即第 4 步中获取的 Worker 后端 URL)*
+5. 点击 **Save and Deploy** (保存并部署)。
+6. Cloudflare 将自动拉取你的代码并进行构建。完成后，它会分配给你一个类似 `https://numbers-in-pi.pages.dev` 的链接，你的网站就正式上线了！
+
+🎉 **至此，你的前后端都已经和 GitHub 深度绑定。以后任何代码的修改，只要 `git push` 到仓库，Cloudflare 都会自动为你拉取、构建并发布最新版本！**
