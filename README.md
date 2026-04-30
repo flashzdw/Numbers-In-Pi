@@ -4,6 +4,10 @@ A website that you can find any numbers in pi.
 
 ---
 
+## 🚀 火山引擎 IGA Pages 部署指南
+
+前端已适配静态站点发布与 SPA 路由回退，IGA Pages 部署请直接参考：[iga-pages-deploy.md](file:///workspace/docs/iga-pages-deploy.md)。
+
 ## 🚀 Cloudflare 架构部署指南
 
 本项目采用纯 Cloudflare Serverless 架构构建，兼具高性能和极低的维护成本。
