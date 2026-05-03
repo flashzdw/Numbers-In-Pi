@@ -4,7 +4,104 @@ A website that you can find any numbers in pi.
 
 ---
 
-## 🚀 Cloudflare 架构部署指南
+## 🚀 IGA Pages 架构部署指南（推荐）
+
+本项目已适配为火山引擎 **IGA Pages** 的全量部署形态：
+
+- **前端 (Frontend)**：部署在 IGA Pages（React + Vite），构建产物位于 `frontend/dist`。
+- **后端 (Backend)**：以 IGA Pages Functions 形式提供 `GET /api/search`。
+- **数据 (Database)**：使用火山引擎对象存储 **TOS** 存放 `pi_index.bin` 与 `mock_pi.txt`，后端通过 Range 读取实现高性能查询。
+
+### 1. 环境准备
+
+1. 安装 Node.js（建议 18+）。
+2. 全局安装 IGA Pages CLI（要求版本 >= 1.0.3）：
+   ```bash
+   npm i -g @iga-pages/cli@latest
+   ```
+3. 登录（本地有浏览器场景）：
+   ```bash
+   iga login
+   ```
+
+### 2. 生成数据文件（pi_index.bin / mock_pi.txt）
+
+1. 进入 `scripts` 目录：
+   ```bash
+   cd scripts
+   ```
+2. 生成索引（如果根目录没有 `mock_pi.txt`，会自动生成 2000 万位的 mock 数据）：
+   ```bash
+   node generate-pi-index.js
+   ```
+3. 确认项目根目录出现以下文件：
+   - `mock_pi.txt`
+   - `pi_index.bin`
+
+### 3. 创建 TOS Bucket 并上传数据
+
+1. 在火山引擎控制台创建一个 TOS Bucket（建议私有读写）。
+2. 上传对象（建议对象 Key 直接使用文件名）：
+   - `pi_index.bin`
+   - `mock_pi.txt`
+3. 记录以下信息，后续要配置到 IGA Pages 环境变量：
+   - `TOS_REGION`
+   - `TOS_ENDPOINT`
+   - `TOS_BUCKET`
+
+> 注意：不建议把 Bucket 设置为公共读；后端 Functions 使用 AK/SK 访问 TOS 即可。
+
+### 4. 创建 IGA Pages 项目（GitHub 持续部署）
+
+IGA Pages 支持基于 GitHub 仓库的拉取构建发布（Git-based）。CLI 也可以引导完成关联：
+
+1. 确保仓库已推送到 GitHub，且本地目录能检测到 GitHub remote。
+2. 在项目根目录执行：
+   ```bash
+   iga pages link
+   ```
+3. 按提示选择/创建项目，并完成 GitHub 授权关联。
+
+### 5. IGA Pages 构建与环境变量配置
+
+在 IGA Pages 项目设置中配置：
+
+- **Root directory**：仓库根目录（本项目的 Functions 在根目录）
+- **Build command**：
+  ```bash
+  npm run build:iga
+  ```
+- **Build output directory**：`frontend/dist`
+
+并配置环境变量（不要提交到代码仓库）：
+
+- `TOS_ACCESS_KEY_ID`
+- `TOS_ACCESS_KEY_SECRET`
+- `TOS_REGION`
+- `TOS_ENDPOINT`
+- `TOS_BUCKET`
+- `TOS_INDEX_KEY`（可选，默认 `pi_index.bin`）
+- `TOS_PI_TEXT_KEY`（可选，默认 `mock_pi.txt`）
+
+### 6. 发布
+
+1. 本地触发一次部署（用于首次创建/验证配置）：
+   ```bash
+   iga pages deploy
+   ```
+2. 之后每次 `git push`（GitHub 持续部署）会触发 IGA Pages 自动构建发布。
+
+### 7. 本地联调
+
+优先使用 IGA Pages 的本地开发命令启动整站（前端 + Functions）：
+
+```bash
+iga pages dev
+```
+
+---
+
+## （旧）Cloudflare 架构部署指南
 
 本项目采用纯 Cloudflare Serverless 架构构建，兼具高性能和极低的维护成本。
 架构如下：

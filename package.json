@@ -1,5 +1,13 @@
 {
+  "name": "numbers-in-pi",
+  "private": true,
+  "scripts": {
+    "install:frontend": "npm ci --prefix frontend",
+    "build": "npm run build --prefix frontend",
+    "build:iga": "npm ci && npm ci --prefix frontend && npm run build --prefix frontend"
+  },
   "dependencies": {
+    "@volcengine/tos-sdk": "^2.9.1",
     "playwright": "^1.59.1"
   }
 }

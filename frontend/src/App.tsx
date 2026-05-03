@@ -27,8 +27,10 @@ function App() {
     setResult(null);
 
     try {
-      const API_BASE = import.meta.env.VITE_API_URL || '';
-      const res = await fetch(`${API_BASE}/api/search?q=${query}`);
+      const apiBase = import.meta.env.VITE_API_URL || window.location.origin;
+      const url = new URL('/api/search', apiBase);
+      url.searchParams.set('q', query);
+      const res = await fetch(url);
       if (!res.ok) {
         throw new Error('搜索失败或未找到匹配项');
       }
