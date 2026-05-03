@@ -1,184 +1,173 @@
 # numbers-in-pi
 
-A website that you can find any numbers in pi.
+一个在圆周率中查找数字并生成海报的小网站。
 
----
+## 当前架构
 
-## 🚀 IGA Pages 架构部署指南（推荐）
+项目现在只保留一条 Cloudflare 部署路径：
 
-本项目已适配为火山引擎 **IGA Pages** 的全量部署形态：
+- 前端：`frontend/`，部署到 Cloudflare Pages
+- 后端：`worker/`，部署到 Cloudflare Workers
+- 数据：`pi_index.bin` 与 `mock_pi.txt` 作为 GitHub Release 资产托管，Worker 通过 HTTP Range 按需读取
 
-- **前端 (Frontend)**：部署在 IGA Pages（React + Vite），构建产物位于 `frontend/dist`。
-- **后端 (Backend)**：以 IGA Pages Functions 形式提供 `GET /api/search`。
-- **数据 (Database)**：使用 GitHub Releases 资产存放 `pi_index.bin` 与 `mock_pi.txt`，后端通过 HTTP Range 读取实现高性能查询。
+## 为什么现在不需要数据库
 
-### 1. 环境准备
+这个项目的查询模式是“读取静态大文件中的固定偏移片段”，并不是典型的增删改查业务。
 
-1. 安装 Node.js（建议 18+）。
-2. 全局安装 IGA Pages CLI（要求版本 >= 1.0.3）：
-   ```bash
-   npm i -g @iga-pages/cli@latest
-   ```
-3. 登录（本地有浏览器场景）：
-   ```bash
-   iga login
-   ```
+- `pi_index.bin` 负责把数字前缀映射到候选位置
+- `mock_pi.txt` 负责提供命中位置周围的文本上下文
+- Worker 只需要根据查询数字计算字节范围，然后对两个静态文件发起 Range 请求
 
-### 2. 生成数据文件（pi_index.bin / mock_pi.txt）
+因此现在不需要 Cloudflare R2、D1、TOS 或其他数据库/对象存储服务；只要能稳定提供可 Range 读取的静态文件即可。当前默认方案是 GitHub Releases。
 
-1. 进入 `scripts` 目录：
-   ```bash
-   cd scripts
-   ```
-2. 生成索引（如果根目录没有 `mock_pi.txt`，会自动生成 2000 万位的 mock 数据）：
-   ```bash
-   node generate-pi-index.js
-   ```
-3. 确认项目根目录出现以下文件：
-   - `mock_pi.txt`
-   - `pi_index.bin`
+## 目录说明
 
-### 3. 上传数据到 GitHub Releases（推荐）
-
-由于部分对象存储（如 TOS）可能需要企业认证，本方案将大文件作为 **GitHub Release 资产**托管，避免把 400MB 索引文件打进前端/Functions 包里。
-
-1. 在 GitHub 仓库创建一个 Release（示例：tag `data-v1`）。
-2. 上传两个 Release 资产（文件名建议保持一致）：
-   - `pi_index.bin`
-   - `mock_pi.txt`
-3. 复制两个资产的下载直链（后续配置到 IGA Pages 环境变量）：
-   - `DATA_INDEX_URL`：`https://github.com/flashzdw/Numbers-In-Pi/releases/download/data-v1/pi_index.bin`
-   - `DATA_PI_URL`：`https://github.com/flashzdw/Numbers-In-Pi/releases/download/data-v1/mock_pi.txt`
-
-### 4. 创建 IGA Pages 项目（GitHub 持续部署）
-
-IGA Pages 支持基于 GitHub 仓库的拉取构建发布（Git-based）。CLI 也可以引导完成关联：
-
-1. 确保仓库已推送到 GitHub，且本地目录能检测到 GitHub remote。
-2. 在项目根目录执行：
-   ```bash
-   iga pages link
-   ```
-3. 按提示选择/创建项目，并完成 GitHub 授权关联。
-
-### 5. IGA Pages 构建与环境变量配置
-
-在 IGA Pages 项目设置中配置：
-
-- **Root directory**：仓库根目录（本项目的 Functions 在根目录）
-- **Build command**：
-  ```bash
-  npm run build:iga
-  ```
-- **Build output directory**：`frontend/dist`
-
-并配置环境变量（不要提交到代码仓库）：
-
-- `DATA_INDEX_URL`：索引文件下载直链
-- `DATA_PI_URL`：圆周率文本文件下载直链
-
-### 6. 发布
-
-1. 本地触发一次部署（用于首次创建/验证配置）：
-   ```bash
-   iga pages deploy
-   ```
-2. 之后每次 `git push`（GitHub 持续部署）会触发 IGA Pages 自动构建发布。
-
-### 7. 本地联调
-
-优先使用 IGA Pages 的本地开发命令启动整站（前端 + Functions）：
-
-```bash
-iga pages dev
+```text
+frontend/   React + Vite 前端
+worker/     Cloudflare Worker API
+scripts/    数据生成脚本
 ```
 
----
+## 环境准备
 
-## （旧）Cloudflare 架构部署指南
+1. 安装 Node.js 18 或更高版本。
+2. 安装并登录 Wrangler：
 
-本项目采用纯 Cloudflare Serverless 架构构建，兼具高性能和极低的维护成本。
-架构如下：
-- **前端 (Frontend)**: 部署在 Cloudflare Pages，基于 React + Vite。
-- **后端 (Backend)**: 部署在 Cloudflare Workers，提供无服务器 API。
-- **数据库 (Database)**: 使用 Cloudflare R2 存储庞大的二进制索引和圆周率文本文件。
+```bash
+npm install -g wrangler
+wrangler login
+```
 
-以下是从零开始部署整个项目到 Cloudflare 的详细步骤。
+## 生成数据文件
 
-### 1. 环境准备
+进入 `scripts/` 后运行索引生成脚本：
 
-1. 确保你的电脑上安装了 **Node.js** (推荐 18+)。
-2. 全局安装 Cloudflare 官方 CLI 工具 `wrangler`：
-   ```bash
-   npm install -g wrangler
-   ```
-3. 登录你的 Cloudflare 账号：
-   ```bash
-   wrangler login
-   ```
-   *(执行后会自动打开浏览器，授权登录即可)*
+```bash
+cd scripts
+node generate-pi-index.js
+```
 
-### 2. 准备“数据库”文件
+脚本会在项目根目录生成：
 
-为了能在数十亿位的圆周率中实现毫秒级搜索，我们需要生成高查询效率的二进制索引文件 `.bin`。
+- `mock_pi.txt`
+- `pi_index.bin`
 
-1. 进入 `scripts` 目录：
-   ```bash
-   cd scripts
-   ```
-2. 运行索引生成脚本：
-   ```bash
-   node generate-pi-index.js
-   ```
-   *说明：如果你没有准备好真实的圆周率文本文件，脚本会自动生成一个 2000 万位的随机数字文件（`mock_pi.txt`）以及对应的索引（`pi_index.bin`，约 400MB）。这两个文件会生成在项目根目录。*
+这两个文件默认已经加入 `.gitignore`，不建议直接提交到仓库。
 
-### 3. 创建 R2 存储桶并上传数据
+## 发布数据到 GitHub Releases
 
-Cloudflare Worker 将直接读取 R2 存储桶中的数据。
+推荐把两个数据文件作为 Release 资产上传，便于 Worker 直接通过公开下载链接做 Range 请求。
 
-1. 在终端中，使用 wrangler 创建一个名为 `pi-data` 的 R2 存储桶：
-   ```bash
-   wrangler r2 bucket create pi-data
-   ```
-2. 将根目录下刚生成的两个文件上传到该存储桶：
-   ```bash
-   # 回到项目根目录
-   cd ..
+1. 在 GitHub 仓库中创建一个 Release，例如 `data-v1`。
+2. 上传以下文件：
+   - `pi_index.bin`
+   - `mock_pi.txt`
+3. 记录两个下载直链，例如：
+   - `DATA_INDEX_URL=https://github.com/<owner>/<repo>/releases/download/data-v1/pi_index.bin`
+   - `DATA_PI_URL=https://github.com/<owner>/<repo>/releases/download/data-v1/mock_pi.txt`
 
-   # 上传测试文本
-   wrangler r2 object put pi-data/mock_pi.txt --file mock_pi.txt
+## 本地开发
 
-   # 上传二进制索引文件（文件较大，可能需要几分钟）
-   wrangler r2 object put pi-data/pi_index.bin --file pi_index.bin
-   ```
+### 1. 安装依赖
 
-### 4. 部署 Worker 后端 (通过 GitHub 自动部署)
+```bash
+npm ci --prefix worker
+npm ci --prefix frontend
+```
 
-我们推荐在 Cloudflare 网站上直接关联 GitHub 仓库，这样每次向仓库推送代码都会自动部署升级到最新版本。
+也可以使用根目录快捷命令：
 
-1. 登录 [Cloudflare Dashboard](https://dash.cloudflare.com/)，在左侧菜单点击 **Workers & Pages**。
-2. 点击 **Create application** (创建应用程序)，选择 **Workers** 选项卡。
-3. 点击 **Connect to Git** (连接到 Git)，授权并选择你的 `numbers-in-pi` GitHub 仓库。
-4. 在构建设置中配置以下内容：
-   - **Root directory (根目录)**: `worker`
-5. 点击 **Save and deploy** (保存并部署)。
-6. 部署成功后，你会在控制台看到该 Worker 分配的公网 URL，例如：`https://pi-poster-api.<your-subdomain>.workers.dev`。**请记录下这个 URL**，下一步部署前端时必须用到。
+```bash
+npm run install:worker
+npm run install:frontend
+```
 
-### 5. 部署 Pages 前端 (通过 GitHub 自动部署)
+### 2. 配置 Worker 本地环境变量
 
-同样地，前端也可以通过关联 GitHub 实现自动化 CI/CD 部署。
+复制示例文件：
 
-1. 返回 **Workers & Pages** 主页，点击 **Create application**，这次选择 **Pages** 选项卡。
-2. 点击 **Connect to Git**，选中你的 `numbers-in-pi` GitHub 仓库，点击 **Begin setup**。
-3. 在构建设置 (Set up builds and deployments) 中，严格按如下内容填写：
-   - **Framework preset**: `Vite` (或留空)
-   - **Root directory (根目录)**: `frontend` *(⚠️极其重要：因为前端代码在子目录中)*
-   - **Build command**: `npm run build`
-   - **Build output directory**: `dist`
-4. 展开下方的 **Environment variables (advanced)** (环境变量)，添加一条后端 API 的指向记录：
-   - **Variable name**: `VITE_API_URL`
-   - **Value**: `https://pi-poster-api.<your-subdomain>.workers.dev` *(即第 4 步中获取的 Worker 后端 URL)*
-5. 点击 **Save and Deploy** (保存并部署)。
-6. Cloudflare 将自动拉取你的代码并进行构建。完成后，它会分配给你一个类似 `https://numbers-in-pi.pages.dev` 的链接，你的网站就正式上线了！
+```bash
+cp worker/.dev.vars.example worker/.dev.vars
+```
 
-🎉 **至此，你的前后端都已经和 GitHub 深度绑定。以后任何代码的修改，只要 `git push` 到仓库，Cloudflare 都会自动为你拉取、构建并发布最新版本！**
+然后把其中的 `DATA_INDEX_URL` 和 `DATA_PI_URL` 改成你自己的 Release 资产地址。
+
+### 3. 启动 Worker
+
+```bash
+npm run dev --prefix worker
+```
+
+或者：
+
+```bash
+npm run dev:worker
+```
+
+默认会在本地启动 Cloudflare Worker 开发服务。
+
+### 4. 启动前端
+
+```bash
+npm run dev --prefix frontend
+```
+
+或者：
+
+```bash
+npm run dev:frontend
+```
+
+前端开发服务器会把 `/api` 请求代理到 `http://localhost:8787`，因此本地联调时不需要额外配置 `VITE_API_URL`。
+
+## 部署 Worker
+
+进入 `worker/` 后部署：
+
+```bash
+cd worker
+wrangler secret put DATA_INDEX_URL
+wrangler secret put DATA_PI_URL
+wrangler deploy
+```
+
+部署完成后，你会得到一个 Worker 地址，例如：
+
+```text
+https://pi-poster-api.<your-subdomain>.workers.dev
+```
+
+## 部署 Pages
+
+在 Cloudflare Pages 中连接 GitHub 仓库后，使用以下配置：
+
+- Framework preset：`Vite`
+- Root directory：`frontend`
+- Build command：`npm run build`
+- Build output directory：`dist`
+
+并在 Pages 环境变量中设置：
+
+- `VITE_API_URL=https://pi-poster-api.<your-subdomain>.workers.dev`
+
+这样前端构建后会直接请求你的 Worker API。
+
+## GitHub 持续部署
+
+推荐让 Worker 和 Pages 都通过 GitHub 仓库自动构建部署：
+
+- Worker：在 Cloudflare Workers 中连接仓库，根目录指向 `worker`
+- Pages：在 Cloudflare Pages 中连接仓库，根目录指向 `frontend`
+
+之后每次推送代码，Cloudflare 都会自动拉取并重新部署。
+
+## 常用命令
+
+```bash
+npm run install:worker
+npm run install:frontend
+npm run dev:worker
+npm run dev:frontend
+npm run build
+npm run build:frontend
+```

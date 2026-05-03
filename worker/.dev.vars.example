@@ -1,0 +1,2 @@
+DATA_INDEX_URL=https://github.com/<owner>/<repo>/releases/download/<tag>/pi_index.bin
+DATA_PI_URL=https://github.com/<owner>/<repo>/releases/download/<tag>/mock_pi.txt
