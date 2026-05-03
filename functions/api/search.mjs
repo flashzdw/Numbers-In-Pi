@@ -1,5 +1,3 @@
-import { TosClient } from '@volcengine/tos-sdk';
-
 function jsonResponse(body, init) {
   const headers = new Headers(init?.headers);
   if (!headers.has('Content-Type')) {
@@ -8,27 +6,46 @@ function jsonResponse(body, init) {
   return new Response(JSON.stringify(body), { ...init, headers });
 }
 
-function getRequiredEnv(name) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing env: ${name}`);
-  }
-  return value;
+function getIndexUrl() {
+  return (
+    process.env.DATA_INDEX_URL ||
+    'https://github.com/flashzdw/Numbers-In-Pi/releases/download/data-v1/pi_index.bin'
+  );
 }
 
-let client;
+function getPiUrl() {
+  return (
+    process.env.DATA_PI_URL ||
+    'https://github.com/flashzdw/Numbers-In-Pi/releases/download/data-v1/mock_pi.txt'
+  );
+}
 
-function getClient() {
-  if (client) return client;
+async function fetchRange(url, rangeStart, rangeEnd) {
+  let currentUrl = url;
+  for (let i = 0; i < 8; i++) {
+    const res = await fetch(currentUrl, {
+      headers: { Range: `bytes=${rangeStart}-${rangeEnd}` },
+      redirect: 'manual',
+    });
 
-  client = new TosClient({
-    accessKeyId: getRequiredEnv('TOS_ACCESS_KEY_ID'),
-    accessKeySecret: getRequiredEnv('TOS_ACCESS_KEY_SECRET'),
-    region: getRequiredEnv('TOS_REGION'),
-    endpoint: getRequiredEnv('TOS_ENDPOINT'),
-  });
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get('location');
+      if (!location) {
+        throw new Error(`Redirect without location: ${currentUrl}`);
+      }
+      currentUrl = new URL(location, currentUrl).toString();
+      continue;
+    }
 
-  return client;
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} when fetching range`);
+    }
+
+    const buffer = await res.arrayBuffer();
+    return new Uint8Array(buffer);
+  }
+
+  throw new Error('Too many redirects');
 }
 
 export default {
@@ -54,10 +71,6 @@ export default {
         );
       }
 
-      const bucket = getRequiredEnv('TOS_BUCKET');
-      const indexKey = process.env.TOS_INDEX_KEY || 'pi_index.bin';
-      const piTextKey = process.env.TOS_PI_TEXT_KEY || 'mock_pi.txt';
-
       const targetLength = q.length;
       const indexDigits = 8;
 
@@ -71,15 +84,7 @@ export default {
       const rangeStart = offset;
       const rangeEnd = offset + length - 1;
 
-      const indexRes = await getClient().getObjectV2({
-        bucket,
-        key: indexKey,
-        dataType: 'buffer',
-        rangeStart,
-        rangeEnd,
-      });
-
-      const indexBuffer = indexRes.data.content;
+      const indexBuffer = await fetchRange(getIndexUrl(), rangeStart, rangeEnd);
       const indexSlice = new Uint32Array(
         indexBuffer.buffer,
         indexBuffer.byteOffset,
@@ -106,15 +111,8 @@ export default {
       const piRangeStart = contextStart + 2;
       const piRangeEnd = piRangeStart + contextLength - 1;
 
-      const piRes = await getClient().getObjectV2({
-        bucket,
-        key: piTextKey,
-        dataType: 'buffer',
-        rangeStart: piRangeStart,
-        rangeEnd: piRangeEnd,
-      });
-
-      const context = piRes.data.content.toString('utf-8');
+      const piBuffer = await fetchRange(getPiUrl(), piRangeStart, piRangeEnd);
+      const context = new TextDecoder().decode(piBuffer);
 
       return jsonResponse(
         {
@@ -127,7 +125,7 @@ export default {
       );
     } catch (err) {
       return jsonResponse(
-        { error: 'Internal Server Error' },
+        { error: 'Internal Server Error', details: err?.message || String(err) },
         { status: 500, headers: corsHeaders }
       );
     }
