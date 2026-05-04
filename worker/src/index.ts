@@ -1,12 +1,58 @@
 export interface Env {
-  PI_STORAGE: R2Bucket;
+  DATA_INDEX_URL?: string;
+  DATA_PI_URL?: string;
+}
+
+function jsonResponse(body: unknown, init?: ResponseInit): Response {
+  const headers = new Headers(init?.headers);
+  if (!headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json; charset=utf-8');
+  }
+  return new Response(JSON.stringify(body), { ...init, headers });
+}
+
+function getRequiredUrl(value: string | undefined, name: string): string {
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${name}`);
+  }
+  return value;
+}
+
+async function fetchRange(
+  url: string,
+  rangeStart: number,
+  rangeEnd: number
+): Promise<Uint8Array> {
+  let currentUrl = url;
+
+  for (let i = 0; i < 8; i += 1) {
+    const res = await fetch(currentUrl, {
+      headers: { Range: `bytes=${rangeStart}-${rangeEnd}` },
+      redirect: 'manual',
+    });
+
+    if (res.status >= 300 && res.status < 400) {
+      const location = res.headers.get('location');
+      if (!location) {
+        throw new Error(`Redirect without location: ${currentUrl}`);
+      }
+      currentUrl = new URL(location, currentUrl).toString();
+      continue;
+    }
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status} when fetching range`);
+    }
+
+    const buffer = await res.arrayBuffer();
+    return new Uint8Array(buffer);
+  }
+
+  throw new Error('Too many redirects');
 }
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const url = new URL(request.url);
-
-    // CORS Headers
+  async fetch(request: Request, env: Env): Promise<Response> {
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -14,98 +60,89 @@ export default {
     };
 
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: corsHeaders });
+      return new Response(null, { status: 204, headers: corsHeaders });
     }
 
-    if (url.pathname === '/api/search' && request.method === 'GET') {
-      const q = url.searchParams.get('q');
+    try {
+      const url = new URL(request.url);
 
+      if (url.pathname !== '/api/search' || request.method !== 'GET') {
+        return new Response('Not Found', { status: 404 });
+      }
+
+      const q = url.searchParams.get('q');
       if (!q || !/^\d{4,8}$/.test(q)) {
-        return new Response(
-          JSON.stringify({ error: 'Please provide a numeric query between 4 and 8 digits.' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        return jsonResponse(
+          { error: 'Please provide a numeric query between 4 and 8 digits.' },
+          { status: 400, headers: corsHeaders }
         );
       }
 
       const targetLength = q.length;
       const indexDigits = 8;
-      
-      // Calculate the min and max 8-digit representations for this prefix
+
       const minValStr = q.padEnd(indexDigits, '0');
       const maxValStr = q.padEnd(indexDigits, '9');
-      const minVal = parseInt(minValStr, 10);
-      const maxVal = parseInt(maxValStr, 10);
+      const minVal = Number.parseInt(minValStr, 10);
+      const maxVal = Number.parseInt(maxValStr, 10);
 
       const offset = minVal * 4;
       const length = (maxVal - minVal + 1) * 4;
+      const rangeStart = offset;
+      const rangeEnd = offset + length - 1;
 
-      try {
-        // Fetch from R2 with HTTP Range
-        // R2 get() options.range: { offset, length }
-        const indexObj = await env.PI_STORAGE.get('pi_index.bin', {
-          range: { offset, length }
-        });
+      const indexBuffer = await fetchRange(
+        getRequiredUrl(env.DATA_INDEX_URL, 'DATA_INDEX_URL'),
+        rangeStart,
+        rangeEnd
+      );
+      const indexSlice = new Uint32Array(
+        indexBuffer.buffer,
+        indexBuffer.byteOffset,
+        Math.floor(indexBuffer.byteLength / 4)
+      );
 
-        if (!indexObj) {
-          return new Response(JSON.stringify({ error: 'Index file not found in R2.' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
+      let minPos = 0xffffffff;
+      for (let i = 0; i < indexSlice.length; i += 1) {
+        if (indexSlice[i] < minPos) {
+          minPos = indexSlice[i];
         }
+      }
 
-        const buffer = await indexObj.arrayBuffer();
-        const indexSlice = new Uint32Array(buffer);
-
-        let minPos = 0xFFFFFFFF;
-        for (let i = 0; i < indexSlice.length; i++) {
-          if (indexSlice[i] < minPos) {
-            minPos = indexSlice[i];
-          }
-        }
-
-        if (minPos === 0xFFFFFFFF) {
-          return new Response(
-            JSON.stringify({ found: false, searchStr: q }),
-            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Fetch context from Pi text file
-        const contextMargin = 20;
-        const contextStart = Math.max(0, minPos - contextMargin);
-        const contextLength = targetLength + (contextMargin * 2);
-        
-        // +2 because "3." at the beginning
-        const piObj = await env.PI_STORAGE.get('mock_pi.txt', {
-          range: { offset: contextStart + 2, length: contextLength }
-        });
-
-        if (!piObj) {
-          return new Response(JSON.stringify({ error: 'Pi data file not found in R2.' }), {
-            status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
-        }
-
-        const context = await piObj.text();
-
-        return new Response(
-          JSON.stringify({
-            found: true,
-            position: minPos,
-            context: context,
-            searchStr: q
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      } catch (err: any) {
-        return new Response(
-          JSON.stringify({ error: 'Internal Server Error', details: err.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      if (minPos === 0xffffffff) {
+        return jsonResponse(
+          { found: false, searchStr: q },
+          { status: 200, headers: corsHeaders }
         );
       }
-    }
 
-    return new Response('Not Found', { status: 404 });
+      const contextMargin = 20;
+      const contextStart = Math.max(0, minPos - contextMargin);
+      const contextLength = targetLength + contextMargin * 2;
+      const piRangeStart = contextStart + 2;
+      const piRangeEnd = piRangeStart + contextLength - 1;
+
+      const piBuffer = await fetchRange(
+        getRequiredUrl(env.DATA_PI_URL, 'DATA_PI_URL'),
+        piRangeStart,
+        piRangeEnd
+      );
+      const context = new TextDecoder().decode(piBuffer);
+
+      return jsonResponse(
+        {
+          found: true,
+          position: minPos,
+          context,
+          searchStr: q,
+        },
+        { status: 200, headers: corsHeaders }
+      );
+    } catch (err) {
+      return jsonResponse(
+        { error: 'Internal Server Error', details: err instanceof Error ? err.message : String(err) },
+        { status: 500, headers: corsHeaders }
+      );
+    }
   },
 };

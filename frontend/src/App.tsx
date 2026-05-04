@@ -9,6 +9,16 @@ interface SearchResult {
   position?: number;
 }
 
+interface SearchApiResponse {
+  found?: boolean;
+  searchStr?: string;
+  context?: string;
+  quote?: string;
+  position?: number;
+  target?: string;
+  error?: string;
+}
+
 function App() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,16 +44,21 @@ function App() {
       if (!res.ok) {
         throw new Error('搜索失败或未找到匹配项');
       }
-      const data = await res.json();
-      // Assume data returns at least context and quote. If target is missing, use query.
+      const data = (await res.json()) as SearchApiResponse;
+      if (data.found === false) {
+        setError('当前数据集中未找到该数字');
+        setResult(null);
+        return;
+      }
+
       setResult({
-        target: data.target || query,
+        target: data.target || data.searchStr || query,
         context: data.context || `在无尽的圆周率中，我们找到了属于你的数字 ${query}。`,
         quote: data.quote || '在宇宙的尺度下，所有的相遇都是久别重逢。',
         position: data.position
       });
-    } catch (err: any) {
-      setError(err.message || '网络请求错误');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : '网络请求错误');
     } finally {
       setLoading(false);
     }

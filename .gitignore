@@ -1,3 +1,5 @@
 pi_index.bin
+mock_pi.txt
+worker/.dev.vars
 node_modules
 .wrangler

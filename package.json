@@ -2,9 +2,12 @@
   "name": "numbers-in-pi",
   "private": true,
   "scripts": {
+    "build:frontend": "npm run build --prefix frontend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:worker": "npm run dev --prefix worker",
     "install:frontend": "npm ci --prefix frontend",
-    "build": "npm run build --prefix frontend",
-    "build:iga": "npm ci && npm ci --prefix frontend && npm run build --prefix frontend"
+    "install:worker": "npm ci --prefix worker",
+    "build": "npm run build --prefix frontend"
   },
   "dependencies": {
     "playwright": "^1.59.1"
