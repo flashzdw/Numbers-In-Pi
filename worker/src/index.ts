@@ -2,7 +2,7 @@ import {
   searchPi,
   validateQuery,
   type PiDataEnv,
-} from '../../frontend/api/_pi-search.ts';
+} from '../../frontend/shared/pi-search';
 
 export interface Env extends PiDataEnv {}
 

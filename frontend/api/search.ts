@@ -6,7 +6,7 @@
 //
 // 本地联调仍走 worker/（npm run dev），本文件只在 Vercel 上运行。
 
-import { searchPi, validateQuery } from './_pi-search.ts';
+import { searchPi, validateQuery } from '../shared/pi-search';
 
 // 最小化的 Vercel req/res 类型，避免引入 @vercel/node 依赖
 interface VercelRequestLike {
