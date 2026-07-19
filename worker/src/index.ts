@@ -1,7 +1,10 @@
-export interface Env {
-  DATA_INDEX_URL?: string;
-  DATA_PI_URL?: string;
-}
+import {
+  searchPi,
+  validateQuery,
+  type PiDataEnv,
+} from '../../frontend/api/_pi-search.ts';
+
+export interface Env extends PiDataEnv {}
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
   const headers = new Headers(init?.headers);
@@ -9,46 +12,6 @@ function jsonResponse(body: unknown, init?: ResponseInit): Response {
     headers.set('Content-Type', 'application/json; charset=utf-8');
   }
   return new Response(JSON.stringify(body), { ...init, headers });
-}
-
-function getRequiredUrl(value: string | undefined, name: string): string {
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-  return value;
-}
-
-async function fetchRange(
-  url: string,
-  rangeStart: number,
-  rangeEnd: number
-): Promise<Uint8Array> {
-  let currentUrl = url;
-
-  for (let i = 0; i < 8; i += 1) {
-    const res = await fetch(currentUrl, {
-      headers: { Range: `bytes=${rangeStart}-${rangeEnd}` },
-      redirect: 'manual',
-    });
-
-    if (res.status >= 300 && res.status < 400) {
-      const location = res.headers.get('location');
-      if (!location) {
-        throw new Error(`Redirect without location: ${currentUrl}`);
-      }
-      currentUrl = new URL(location, currentUrl).toString();
-      continue;
-    }
-
-    if (!res.ok) {
-      throw new Error(`HTTP ${res.status} when fetching range`);
-    }
-
-    const buffer = await res.arrayBuffer();
-    return new Uint8Array(buffer);
-  }
-
-  throw new Error('Too many redirects');
 }
 
 export default {
@@ -71,73 +34,16 @@ export default {
       }
 
       const q = url.searchParams.get('q');
-      if (!q || !/^\d{4,8}$/.test(q)) {
+      const validationError = validateQuery(q);
+      if (validationError) {
         return jsonResponse(
-          { error: 'Please provide a numeric query between 4 and 8 digits.' },
+          { error: validationError },
           { status: 400, headers: corsHeaders }
         );
       }
 
-      const targetLength = q.length;
-      const indexDigits = 8;
-
-      const minValStr = q.padEnd(indexDigits, '0');
-      const maxValStr = q.padEnd(indexDigits, '9');
-      const minVal = Number.parseInt(minValStr, 10);
-      const maxVal = Number.parseInt(maxValStr, 10);
-
-      const offset = minVal * 4;
-      const length = (maxVal - minVal + 1) * 4;
-      const rangeStart = offset;
-      const rangeEnd = offset + length - 1;
-
-      const indexBuffer = await fetchRange(
-        getRequiredUrl(env.DATA_INDEX_URL, 'DATA_INDEX_URL'),
-        rangeStart,
-        rangeEnd
-      );
-      const indexSlice = new Uint32Array(
-        indexBuffer.buffer,
-        indexBuffer.byteOffset,
-        Math.floor(indexBuffer.byteLength / 4)
-      );
-
-      let minPos = 0xffffffff;
-      for (let i = 0; i < indexSlice.length; i += 1) {
-        if (indexSlice[i] < minPos) {
-          minPos = indexSlice[i];
-        }
-      }
-
-      if (minPos === 0xffffffff) {
-        return jsonResponse(
-          { found: false, searchStr: q },
-          { status: 200, headers: corsHeaders }
-        );
-      }
-
-      const contextMargin = 20;
-      const contextStart = Math.max(0, minPos - contextMargin);
-      const contextLength = targetLength + contextMargin * 2;
-      const piRangeStart = contextStart + 2;
-      const piRangeEnd = piRangeStart + contextLength - 1;
-
-      const piBuffer = await fetchRange(
-        getRequiredUrl(env.DATA_PI_URL, 'DATA_PI_URL'),
-        piRangeStart,
-        piRangeEnd
-      );
-      const context = new TextDecoder().decode(piBuffer);
-
-      return jsonResponse(
-        {
-          found: true,
-          position: minPos,
-          context,
-          searchStr: q,
-        },
-        { status: 200, headers: corsHeaders }
-      );
+      const result = await searchPi(q as string, env);
+      return jsonResponse(result, { status: 200, headers: corsHeaders });
     } catch (err) {
       return jsonResponse(
         { error: 'Internal Server Error', details: err instanceof Error ? err.message : String(err) },

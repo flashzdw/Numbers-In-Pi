@@ -1,5 +1,9 @@
 pi_index.bin
+pi-billion.txt
 mock_pi.txt
+pi_chunks/
+pi_zip_chunks/
+pi_unzipped/
 worker/.dev.vars
 node_modules
 .wrangler
