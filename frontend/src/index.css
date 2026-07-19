@@ -24,6 +24,11 @@ body,
   min-height: 100%;
 }
 
+html,
+body {
+  overflow-x: hidden; /* 阻止移动端横向滑动露出空白 */
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -31,7 +36,6 @@ body {
   color: var(--ink);
   font-family: var(--font-hand);
   -webkit-font-smoothing: antialiased;
-  overflow-x: hidden;
 }
 
 ::selection {
@@ -208,18 +212,28 @@ body {
   border: none;
   background: var(--red);
   color: var(--cream);
-  font-family: var(--font-display);
-  font-size: 26px;
-  line-height: 1;
   cursor: pointer;
   box-shadow: 0 4px 0 var(--red-dark);
   transition:
     transform 0.12s ease,
     box-shadow 0.12s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.postmark-btn:hover {
-  transform: rotate(-8deg) scale(1.06);
+.postmark-btn .pi-glyph {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1;
+  display: inline-block;
+}
+
+/* 触屏设备没有真正的 hover，避免触摸后 hover 粘连 */
+@media (hover: hover) {
+  .postmark-btn:hover {
+    transform: rotate(-8deg) scale(1.06);
+  }
 }
 
 .postmark-btn:active {
@@ -229,10 +243,17 @@ body {
 
 .postmark-btn:disabled {
   cursor: wait;
+}
+
+/* 显式 from/to：规避 WebKit 矩阵插值导致的不转问题 */
+.postmark-btn .pi-glyph.spinning {
   animation: stampSpin 0.9s linear infinite;
 }
 
 @keyframes stampSpin {
+  from {
+    transform: rotate(0deg);
+  }
   to {
     transform: rotate(360deg);
   }
@@ -296,9 +317,11 @@ body {
     box-shadow 0.12s ease;
 }
 
-.dl-btn:hover {
-  transform: translateY(-2px) rotate(-1deg);
-  box-shadow: 0 7px 0 var(--green-dark);
+@media (hover: hover) {
+  .dl-btn:hover {
+    transform: translateY(-2px) rotate(-1deg);
+    box-shadow: 0 7px 0 var(--green-dark);
+  }
 }
 
 .dl-btn:active {

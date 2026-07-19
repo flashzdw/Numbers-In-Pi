@@ -532,7 +532,7 @@ export default function App() {
   };
 
   return (
-    <div className="relative min-h-screen flex flex-col">
+    <div className="relative min-h-screen flex flex-col overflow-hidden">
       {/* 云 */}
       {CLOUDS.map((c, i) => (
         <div
@@ -642,7 +642,7 @@ export default function App() {
                 aria-label="search"
                 title="盖戳寄出！"
               >
-                π
+                <span className={loading ? 'pi-glyph spinning' : 'pi-glyph'}>π</span>
               </button>
             </form>
             <p className="postcard-hint">每一次搜索，都是寄往 π 深处的一张明信片 →</p>
