@@ -1,42 +1,380 @@
 @import "tailwindcss";
 
+:root {
+  --sky: #4a90d9;
+  --cream: #f8efdc;
+  --cream-soft: #fffaf0;
+  --cream-line: #d9c9a3;
+  --ink: #2c3a56;
+  --red: #e2483d;
+  --red-dark: #b33228;
+  --yellow: #f6c453;
+  --green: #2ba95c;
+  --green-dark: #1e8a47;
+  --green-light: #3fbf72;
+  --font-display: "ZCOOL QingKe HuangYou", "Yuanti SC", "YouYuan", "PingFang SC",
+    sans-serif;
+  --font-hand: "ZCOOL KuaiLe", "Yuanti SC", "YouYuan", "PingFang SC", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
 body {
   margin: 0;
   padding: 0;
-  background-color: #050510;
-  color: #fff;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--sky);
+  color: var(--ink);
+  font-family: var(--font-hand);
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
 }
 
-/* Starry background animation */
-.stars, .twinkling {
+::selection {
+  background: rgba(226, 72, 61, 0.85);
+  color: #fff;
+}
+
+/* ---------- 纸张颗粒（覆盖全站，模拟手工纸） ---------- */
+
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.09;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+/* ---------- 云 ---------- */
+
+.cloud {
   position: absolute;
-  top: 0;
+  width: 110px;
+  height: 34px;
+  background: var(--cream);
+  border-radius: 999px;
+  opacity: 0.95;
+  animation: cloudDrift linear infinite;
+}
+
+.cloud::before,
+.cloud::after {
+  content: "";
+  position: absolute;
+  background: var(--cream);
+  border-radius: 50%;
+}
+
+.cloud::before {
+  width: 46px;
+  height: 46px;
+  top: -22px;
+  left: 18px;
+}
+
+.cloud::after {
+  width: 30px;
+  height: 30px;
+  top: -13px;
+  right: 20px;
+}
+
+@keyframes cloudDrift {
+  from {
+    transform: translateX(-25vw);
+  }
+  to {
+    transform: translateX(125vw);
+  }
+}
+
+/* ---------- 标题区 ---------- */
+
+.hero-title {
+  font-family: var(--font-display);
+  color: var(--cream);
+  font-size: clamp(3rem, 10vw, 5.6rem);
+  line-height: 1.05;
+  letter-spacing: 0.05em;
+  transform: rotate(-2deg);
+  /* 卡通描边贴纸字：8 向描边 + 硬投影，云朵飘过也清晰 */
+  text-shadow:
+    3px 3px 0 rgba(44, 58, 86, 0.9),
+    -3px 3px 0 rgba(44, 58, 86, 0.9),
+    3px -3px 0 rgba(44, 58, 86, 0.9),
+    -3px -3px 0 rgba(44, 58, 86, 0.9),
+    3px 0 0 rgba(44, 58, 86, 0.9),
+    -3px 0 0 rgba(44, 58, 86, 0.9),
+    0 3px 0 rgba(44, 58, 86, 0.9),
+    0 -3px 0 rgba(44, 58, 86, 0.9),
+    8px 8px 0 rgba(44, 58, 86, 0.25);
+  margin: 0;
+}
+
+.hero-flank {
+  font-family: var(--font-mono);
+  color: var(--cream);
+  font-size: 12px;
+  letter-spacing: 3px;
+  opacity: 0.95;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  justify-content: center;
+  text-shadow:
+    1px 1px 0 rgba(44, 58, 86, 0.75),
+    -1px 1px 0 rgba(44, 58, 86, 0.75),
+    1px -1px 0 rgba(44, 58, 86, 0.75),
+    -1px -1px 0 rgba(44, 58, 86, 0.75);
+}
+
+.hero-sub {
+  font-family: var(--font-hand);
+  color: var(--cream);
+  font-size: clamp(1rem, 2.6vw, 1.25rem);
+  letter-spacing: 2px;
+  margin: 10px 0 0;
+  text-shadow:
+    1px 1px 0 rgba(44, 58, 86, 0.7),
+    -1px 1px 0 rgba(44, 58, 86, 0.7),
+    1px -1px 0 rgba(44, 58, 86, 0.7),
+    -1px -1px 0 rgba(44, 58, 86, 0.7),
+    2px 2px 0 rgba(44, 58, 86, 0.35);
+}
+
+/* ---------- 搜索明信片 ---------- */
+
+.postcard {
+  background: var(--cream);
+  border-radius: 20px;
+  padding: 10px;
+  box-shadow: 0 7px 0 rgba(44, 58, 86, 0.22);
+  transform: rotate(0.6deg);
+}
+
+.postcard-inner {
+  border: 2px dashed var(--cream-line);
+  border-radius: 13px;
+  padding: 18px 18px 14px;
+}
+
+.postcard-label {
+  font-family: var(--font-display);
+  color: var(--ink);
+  font-size: 15px;
+  letter-spacing: 4px;
+  margin-bottom: 10px;
+  display: block;
+}
+
+.digit-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--cream-soft);
+  border: 2px dashed var(--cream-line);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 18px;
+  color: var(--ink);
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.digit-input::placeholder {
+  color: #b3a684;
+  font-size: 15px;
+}
+
+.digit-input:focus {
+  border-color: var(--red);
+  border-style: solid;
+  box-shadow: 0 0 0 3px rgba(226, 72, 61, 0.15);
+}
+
+.postmark-btn {
+  width: 54px;
+  height: 54px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: none;
+  background: var(--red);
+  color: var(--cream);
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--red-dark);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.postmark-btn:hover {
+  transform: rotate(-8deg) scale(1.06);
+}
+
+.postmark-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--red-dark);
+}
+
+.postmark-btn:disabled {
+  cursor: wait;
+  animation: stampSpin 0.9s linear infinite;
+}
+
+@keyframes stampSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.postcard-hint {
+  font-size: 13px;
+  color: #a89a7c;
+  letter-spacing: 1px;
+  margin: 10px 2px 0;
+}
+
+.error-burst {
+  margin-top: 12px;
+  background: var(--red);
+  color: #fff;
+  font-family: var(--font-hand);
+  font-size: 15px;
+  letter-spacing: 1px;
+  border-radius: 12px;
+  padding: 10px 14px;
+  box-shadow: 0 4px 0 var(--red-dark);
+  animation: popIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ---------- 邮票入场 ---------- */
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.82) rotate(-5deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(-1.2deg);
+  }
+}
+
+.stamp-enter {
+  animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ---------- 下载按钮 ---------- */
+
+.dl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--green);
+  color: var(--cream);
+  border: none;
+  border-radius: 999px;
+  padding: 13px 30px;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 3px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 var(--green-dark);
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease;
+}
+
+.dl-btn:hover {
+  transform: translateY(-2px) rotate(-1deg);
+  box-shadow: 0 7px 0 var(--green-dark);
+}
+
+.dl-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 var(--green-dark);
+}
+
+/* ---------- 山坡 ---------- */
+
+.hills {
+  position: fixed;
   left: 0;
   right: 0;
   bottom: 0;
   width: 100%;
-  height: 100%;
-  display: block;
-}
-
-.stars {
-  background: #000 url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIj48Y2lyY2xlIGN4PSIxMCIgY3k9IjEwIiByPSIxIiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC41Ii8+PGNpcmNsZSBjeD0iNTAiIGN5PSI4MCIgcj0iMS41IiBmaWxsPSJ3aGl0ZSIgb3BhY2l0eT0iMC44Ii8+PGNpcmNsZSBjeD0iMTUwIiBjeT0iMzAiIHI9IjEiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjMiLz48Y2lyY2xlIGN4PSIxMjAiIGN5PSIxNTAiIHI9IjIiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjYiLz48Y2lyY2xlIGN4PSIxODAiIGN5PSIxODAiIHI9IjEiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjQiLz48Y2lyY2xlIGN4PSI4MCIgY3k9IjEzMCIgcj0iMSIgZmlsbD0id2hpdGUiIG9wYWNpdHk9IjAuNyIvPjwvc3ZnPg==') repeat top center;
+  height: min(30vh, 240px);
   z-index: 0;
+  pointer-events: none;
 }
 
-.twinkling {
-  background: transparent url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgZmlsbD0idXJsKCNnKSIvPjxkZWZzPjxyYWRpYWxHcmFkaWVudCBpZD0iZyIgY3g9IjUwJSIgY3k9IjUwJSIgcj0iNTAlIj48c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiLz48c3RvcCBvZmZzZXQ9IjEwMCUiIHN0b3AtY29sb3I9InJnYmEoMCwwLDAsMCkiLz48L3JhZGlhbEdyYWRpZW50PjwvZGVmcz48L3N2Zz4=') repeat top center;
+.hill-digit {
+  position: fixed;
   z-index: 1;
-  animation: move-twink-back 200s linear infinite;
+  font-family: var(--font-display);
+  color: var(--cream);
+  text-shadow: 2px 2px 0 rgba(44, 58, 86, 0.25);
+  pointer-events: none;
+  animation: bob 3.4s ease-in-out infinite alternate;
 }
 
-@keyframes move-twink-back {
-  from {background-position: 0 0;}
-  to {background-position: -10000px 5000px;}
+@keyframes bob {
+  from {
+    transform: translateY(0) rotate(var(--rot, -4deg));
+  }
+  to {
+    transform: translateY(-7px) rotate(var(--rot, -4deg));
+  }
 }
 
-.poster-glow {
-  box-shadow: 0 0 40px rgba(123, 97, 255, 0.4), 0 0 100px rgba(97, 218, 255, 0.2);
+.sparkle {
+  position: fixed;
+  z-index: 1;
+  color: var(--cream);
+  pointer-events: none;
+  animation: twinkle 2.6s ease-in-out infinite;
 }
 
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.15);
+  }
+}
+
+/* ---------- 页脚 ---------- */
+
+.site-footer {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: rgba(248, 239, 220, 0.85);
+  text-align: center;
+}
+
+/* 减少动态偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .cloud,
+  .hill-digit,
+  .sparkle,
+  .stamp-enter,
+  .error-burst {
+    animation: none;
+  }
+}
